@@ -31,22 +31,46 @@ class DeltaRobotController:
 
 class TrajectoryGenerator:
     def __init__(self, v_max, a_max, dt=0.01):
-        self.v_max = v_max
-        self.a_max = a_max
-        self.dt = dt
+        self.v_max = v_max  # Maximum velocity
+        self.a_max = a_max  # Maximum acceleration
+        self.dt = dt        # Time step
 
     def generate_trapezoidal(self, start, end, duration=0.25):
-        t = np.arange(0, duration + self.dt, self.dt)
-        distance = np.linalg.norm(end - start)
-        t_acc = self.v_max / self.a_max
-        distance_acc = 0.5 * self.a_max * t_acc**2
+        t = np.arange(0, duration + self.dt, self.dt)  # Time steps
+        distance = np.linalg.norm(end - start)         # Total distance
+        part_duration = duration / 3                    # Duration for each phase (accel, constant, decel)
         
-        if distance_acc * 2 > distance:
-            t_acc = np.sqrt(distance / self.a_max)
-            v_max = self.a_max * t_acc
-            distance_acc = 0.5 * self.a_max * t_acc**2
+        t_acc = part_duration                            # Time for acceleration phase
+        t_stable = part_duration                        # Time for constant velocity phase
+        t_dec = part_duration                            # Time for deceleration phase
         
-        trajectory = np.linspace(start, end, len(t))
+        v_peak = distance / (t_acc + t_stable + t_dec)   # Peak velocity required to complete trajectory
+
+        # Initialize lists for position and velocity
+        trajectory = []
+        velocities = []
+        
+        # Generate trajectory and velocities for each time step
+        for time in t:
+            if time <= t_acc:  # Acceleration phase
+                v = v_peak * (time / t_acc)                               # Linear increase in velocity
+                pos = start + 0.5 * v_peak * (time ** 2) / t_acc          # Position increases quadratically
+            elif time <= t_acc + t_stable:  # Constant velocity phase
+                elapsed_stable = time - t_acc
+                pos = start + 0.5 * distance + v_peak * elapsed_stable     # Position increases linearly
+                v = v_peak
+            else:  # Deceleration phase
+                elapsed_decel = time - t_acc - t_stable
+                v = v_peak * (1 - elapsed_decel / t_dec)                   # Velocity decreases linearly
+                pos = end - 0.5 * v_peak * (elapsed_decel ** 2) / t_dec    # Position decelerates quadratically
+            
+            trajectory.append(pos)
+            velocities.append(v)
+        
+        # Convert lists to numpy arrays
+        trajectory = np.array(trajectory)
+        velocities = np.array(velocities)
+        
         return t, trajectory
 
 class KinematicsCalculator:
