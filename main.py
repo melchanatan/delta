@@ -27,7 +27,7 @@ if __name__ == "__main__":
     simulator = DeltaRobotSimulator(
         kinematics, 
         trajectory_gen, 
-        motion_controller
+        #motion_controller
     )
 
     # Initial position
