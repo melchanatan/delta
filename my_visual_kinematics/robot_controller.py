@@ -111,10 +111,9 @@ class MotionController:
         return self.Kp_vel * error
 
 class DeltaRobotSimulator:
-    def __init__(self, kinematics, trajectory_gen, motion_controller):
+    def __init__(self, kinematics, trajectory_gen):
         self.kinematics = kinematics
         self.trajectory_gen = trajectory_gen
-        self.motion_controller = motion_controller
 
     def simulate_cascade_control(self, start_position, target_position, duration=0.25):
         dt = self.trajectory_gen.dt
@@ -146,10 +145,9 @@ class DeltaRobotSimulator:
                 current_v = np.linalg.norm(v_cartesian[i])
                 max_v = max(max_v, current_v)
                 
+                # Instead of position and velocity control, directly update the position and velocity
                 if i > 0:
-                    v_desired = self.motion_controller.position_control(current_position, trajectory[i])
-                    torques[i] = self.motion_controller.velocity_control(v_desired, current_velocity)
-                    current_velocity += torques[i] * dt
+                    current_velocity += torques[i] * dt  # You may update this as needed based on your system dynamics
                     current_position += current_velocity * dt
                     
             except ValueError as e:

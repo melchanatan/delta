@@ -27,7 +27,7 @@ if __name__ == "__main__":
     simulator = DeltaRobotSimulator(
         kinematics, 
         trajectory_gen, 
-        motion_controller
+        # motion_controller
     )
 
     # Initial position
@@ -35,8 +35,13 @@ if __name__ == "__main__":
 
     # Main control loop
     while True:
-        x = x + 0.1  # -0.4 to 0.4
+        x = x + 0.4
         
+        print("x: ", x )# -0.4 to 0.4
+        print("y: ", y)
+        print("z: ", z)
+
+         
         # Define trajectory frames
         frames = [
             Frame.from_euler_3(np.array([0., 0., 0.]), np.array([[x_old], [y_old], [z_old]])),
@@ -52,7 +57,7 @@ if __name__ == "__main__":
         
         # Execute motion
         trajectory.move_with_speed(
-            speed=round(v*20), 
+            speed=round(v), 
             motion="p2p", 
             object_speed=robot_controller.robot.object_speed
         )
