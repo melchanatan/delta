@@ -6,10 +6,10 @@ from my_visual_kinematics.RobotTrajectory import RobotTrajectory
 class DeltaRobotController:
     def __init__(self):
         # Robot Parameters
-        self.f = 0.16    # Base equilateral triangle side length
-        self.e = 0.06    # End effector equilateral triangle side length
-        self.rf = 0.3    # Upper arm length
-        self.re = 0.5    # Lower arm length
+        self.f = 0.3    # Base equilateral triangle side length
+        self.e = 0.1    # End effector equilateral triangle side length
+        self.rf = 0.6    # Upper arm length
+        self.re = 1    # Lower arm length
         self.tan30 = 1 / np.sqrt(3)
         
         # Controller Parameters
