@@ -184,9 +184,10 @@ class App:
         """Render everything on the screen."""
         self.screen.fill(WHITE)
 
-        # Draw title
-        title_surface = HEADER_FONT.render("3 DOF Delta Robot", True, BLACK)
-        self.screen.blit(title_surface, (300, 50))
+        # Draw title using smaller font
+        small_header_font = pygame.font.SysFont("arial", 24, bold=True)
+        title_surface = small_header_font.render("3 DOF Delta Robot", True, BLACK)
+        self.screen.blit(title_surface, (300, 30))  # Adjusted position for smaller font
 
         # Draw section labels
         start_label = FONT.render("Start Position:", True, BLACK)
@@ -201,6 +202,24 @@ class App:
         # Draw button
         self.download_button.draw(self.screen)
 
+        # Draw robot dimensions and load details
+        dimension_label = small_header_font.render("Robot Dimensions and Load", True, BLACK)
+        self.screen.blit(dimension_label, (50, 60))  # Adjusted position for smaller header
+        dimensions = [
+            f"Base Triangle Side Length (f): {robot_controller.f} m",
+            f"End Effector Triangle Side Length (e): {robot_controller.e} m",
+            f"Upper Arm Length (rf): {robot_controller.rf} m",
+            f"Lower Arm Length (re): {robot_controller.re} m",
+            f"Assumed Weight: 0.0 kg",
+            f"Load: 0.5 kg",
+        ]
+
+        # Use a smaller font for the dimensions
+        small_font = pygame.font.SysFont("arial", 14)  # Smaller font size
+        for i, line in enumerate(dimensions):
+            dimension_surface = small_font.render(line, True, BLACK)
+            self.screen.blit(dimension_surface, (50, 100 + i * 20))  # Adjusted spacing for smaller text
+
         # Update the display
         pygame.display.flip()
 
@@ -210,6 +229,7 @@ class App:
             self.handle_events()
             self.draw()
             self.clock.tick(30)
+
 
 
 
