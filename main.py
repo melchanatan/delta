@@ -27,9 +27,18 @@ if __name__ == "__main__":
     simulator = DeltaRobotSimulator(
         kinematics, 
         trajectory_gen, 
-        #motion_controller
+        # motion_controller
     )
 
+    # Initialize WorkspaceValidator
+    workspace_validator = WorkspaceValidator(
+        robot_controller.f,
+        robot_controller.e,
+        robot_controller.rf,
+        robot_controller.re,
+        robot_controller.tan30
+    )
+    
     # Initial position
     x, y, z = x_old, y_old, z_old = -0.4, -0.2, -0.5
 

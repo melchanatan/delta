@@ -28,6 +28,58 @@ class DeltaRobotController:
             object_pos=self.object_pos, 
             object_speed=10
         )
+        
+class WorkspaceValidator:
+    def __init__(self, f, e, rf, re, tan30):
+        """
+        Initialize the WorkspaceValidator with Delta robot parameters.
+        """
+        self.f = f        # Base equilateral triangle side length
+        self.e = e        # End effector equilateral triangle side length
+        self.rf = rf      # Upper arm length
+        self.re = re      # Lower arm length
+        self.tan30 = tan30
+
+    def is_within_workspace(self, x, y, z):
+        """
+        Check if the given position (x, y, z) lies within the robot's workspace.
+
+        Parameters:
+            x, y, z (float): Cartesian coordinates to check.
+
+        Returns:
+            bool: True if the position is within the workspace, False otherwise.
+        """
+        # Calculate the distance from the origin to the position
+        distance = np.linalg.norm([x, y, z])
+
+        # Define the workspace boundaries
+        max_reach = self.rf + self.re
+        min_reach = abs(self.rf - self.re)
+
+        # Check if the position is within the reach
+        if min_reach <= distance <= max_reach:
+            return True
+        return False
+
+    def validate_positions(self, start, stop):
+        """
+        Validate start and stop positions.
+
+        Parameters:
+            start, stop (tuple): (x, y, z) coordinates for the positions.
+
+        Returns:
+            dict: Validation result with booleans for each position.
+        """
+        start_valid = self.is_within_workspace(*start)
+        stop_valid = self.is_within_workspace(*stop)
+
+        return {
+            "start_valid": start_valid,
+            "stop_valid": stop_valid
+        }
+
 
 class TrajectoryGenerator:
     def __init__(self, v_max, a_max, dt=0.01):
@@ -71,7 +123,7 @@ class TrajectoryGenerator:
         trajectory = np.array(trajectory)
         velocities = np.array(velocities)
         
-        return t, trajectory
+        return t, trajectory #,velocities
 
 class KinematicsCalculator:
     def __init__(self, f, e, rf, re, tan30):
