@@ -139,9 +139,9 @@ class App:
             InputBox(500, 250, 140, 32, "z"),
         ]
         self.target_input_boxes = [
-            InputBox(500, 400, 140, 32, "x"),
-            InputBox(500, 450, 140, 32, "y"),
-            InputBox(500, 500, 140, 32, "z"),
+            InputBox(500, 350, 140, 32, "x"),
+            InputBox(500, 400, 140, 32, "y"),
+            InputBox(500, 450, 140, 32, "z"),
         ]
 
         # Set default values
@@ -149,7 +149,7 @@ class App:
             box.text = "0.0"
 
         # Create "Download CSV" Button
-        self.download_button = Button(350, 580, 200, 50, "Download CSV", self.download_csv)
+        self.download_button = Button(350, 500, 300, 50, "Calculate & Get CSV", self.download_csv)
 
     def download_csv(self):
         """Callback for the 'Download CSV' button."""
