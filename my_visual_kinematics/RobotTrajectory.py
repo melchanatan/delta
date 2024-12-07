@@ -110,7 +110,7 @@ class RobotTrajectory(object):
         self.robot.ax.plot_wireframe(x, y, np.array([z]), color="lightblue")
         plt.show()
         return inter_values, inter_time_points
-    
+
     def move_with_speed(self, speed, motion="p2p", method="linear", object_speed=0.2):
         inter_values, inter_time_points = self.interpolate(num_segs=100-speed, motion=motion, method=method)
 
@@ -119,11 +119,13 @@ class RobotTrajectory(object):
         # Ensure the object is visible on the legend
         ax.legend()
 
+        last_object_move_time = time.time()  # Initialize the timer
+
         # Loop through interpolated values
         for i in range(1, len(inter_values)):
             # Calculate distance and duration for movement
             distance = np.linalg.norm(inter_values[i] - inter_values[i - 1])
-            duration = distance / speed
+            duration = len(inter_values) / 1000
 
             # Use forward kinematics to move the robot
             self.robot.forward(inter_values[i])
@@ -142,10 +144,15 @@ class RobotTrajectory(object):
 
             # Update robot visualization
             self.robot.draw()
-            self.robot.move_object((object_speed/9000)+self.robot.ob_x[0])
+
+            # Check if 1 second has passed since the last object movement
+            current_time = time.time()
+            if current_time - last_object_move_time >= 1:
+                self.robot.move_object(object_speed + self.robot.ob_x[0])
+                last_object_move_time = current_time  # Reset the timer
 
             # Refresh the plot
-            plt.pause(0.000001)
+            plt.pause(duration)
 
         # Keep the figure open for reuse without closing interactive mode
         # plt.draw()

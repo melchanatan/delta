@@ -202,7 +202,6 @@ class RobotDelta(Robot):
             z = [oc[2, i], ob[2, i], oa[2, i]]
             self.ax.plot_wireframe(x, y, np.array([z]))
         # plot two dots
-        
         object_point, = self.ax.plot(*self.moving_object_pos, marker="o", color="blue", label="Object")
         self.ax.scatter([0.], [0.], [0.], c="red", marker="o")
         self.ax.scatter(op[0], op[1], op[2], c="red", marker="o")
