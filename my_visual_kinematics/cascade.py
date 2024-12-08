@@ -88,17 +88,59 @@ class DeltaRobotController:
             [self.rf * np.cos(np.radians(theta1)), self.rf * np.cos(np.radians(theta2)), self.rf * np.cos(np.radians(theta3))],
             [0, 0, 0]
         ])
-
+        
+    def calculate_homeconfig_pos(self): #homeconfig_pos of end_effector
+        tan30 = 1 / np.sqrt(3)  # tan(30Â°)
+        
+        # Distance in the XY-plane from the origin to the end-effector center
+        xy_distance = self.rf + (self.f * tan30) - (self.e * tan30)
+        
+        # Solve for Z using Pythagorean theorem
+        z = -np.sqrt(self.re**2 - xy_distance**2)
+        
+        # At the initial state, the end effector is aligned along the Z-axis
+        x = 0.0
+        y = 0.0
+        return [x, y, z]
     
+    def calculate_lowest_z(self):
+        # Offset from the triangular base and end effector
+        offset = 0.5 * (self.f / np.sqrt(3) - self.e / np.sqrt(3))
+        
+        # Total length when fully stretched
+        total_length = self.rf + self.re
+        
+        # Vertical projection for z using the total length and offset
+        lowest_z = -np.sqrt(total_length**2 - offset**2)
+        
+        # Return the position tuple
+        return lowest_z
+    
+    def calculate_middle_taskspace(self):
+        z_min = DeltaRobotController.calculate_homeconfig_pos()
+        z_max = DeltaRobotController.calculate_lowest_z()
+        middle_taskspace = (z_min-z_max)/2
+        return middle_taskspace #z-axis
 
 class TrajectoryGenerator:
-    def __init__(self, v_max, a_max, dt=0.01):
+    def __init__(self, v_max, a_max,obj_pos_y, dt=0.01):
         self.v_max = v_max  # Maximum velocity
         self.a_max = a_max  # Maximum acceleration
+        self.obj_y = obj_pos_y # start position in y axis of object
         self.dt = dt        # Time step
-
-    def generate_trapezoidal(self, start_pos, end_pos, duration=0.25, dt=0.01):
-        dis = end_pos-start_pos  # Distances for x, y, z axes
+    
+    def end_position(self,v_conveyor,obj_start_pos_y,duration=0.25): #obj_start_pos = y axis
+        obj_start_pos = []
+        obj_start_pos[0] = v_conveyor*duration #x axis
+        obj_start_pos[1] = obj_start_pos_y
+        obj_start_pos[2] = DeltaRobotController.calculate_middle_taskspace() #z axis
+        catch_pos = obj_start_pos
+        return catch_pos
+    def generate_trapezoidal(self, duration=0.25, dt=0.01):
+        start_pos = DeltaRobotController.calculate_homeconfig_pos()
+        end_pos = TrajectoryGenerator.end_position()
+        dis = end_pos-start_pos
+        
         # Initialize variables for each axis
         [x, y, z] = start_pos
         print(x,y,z)
