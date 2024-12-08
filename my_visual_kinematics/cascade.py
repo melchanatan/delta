@@ -92,16 +92,16 @@ class DeltaRobotController:
     
 
 class TrajectoryGenerator:
-    def __init__(self, v_max, a_max, dt=0.001):
+    def __init__(self, v_max, a_max, dt=0.01):
         self.v_max = v_max  # Maximum velocity
         self.a_max = a_max  # Maximum acceleration
         self.dt = dt        # Time step
 
     def generate_trapezoidal(self, start_pos, end_pos, duration=0.25, dt=0.01):
         dis = end_pos-start_pos  # Distances for x, y, z axes
-
         # Initialize variables for each axis
         [x, y, z] = start_pos
+        print(x,y,z)
         vx, vy, vz = 0, 0, 0
         ax, ay, az = 0, 0, 0
 
@@ -111,9 +111,9 @@ class TrajectoryGenerator:
         for t in np.arange(0, duration + dt, dt):
             # Acceleration phase
             if t <= duration / 3:
-                ax = (2 * dis[0]) / (duration)**2
-                ay = (2 * dis[1]) / (duration)**2
-                az = (2 * dis[2]) / (duration)**2
+                ax = dis[0] / (2*(duration/3)**2)
+                ay = dis[1] / (2*(duration/3)**2)
+                az = dis[2] / (2*(duration/3)**2)
                 
                 vx = ax * t
                 vy = ay * t
@@ -126,16 +126,15 @@ class TrajectoryGenerator:
             # Constant velocity phase
             elif t <= duration * 2 / 3:
                 ax, ay, az = 0, 0, 0  
-                
                 x = x + vx * dt
                 y = y + vy * dt
                 z = z + vz * dt
             
             # Deceleration phase
             else:
-                ax = -(2 * dis[0]) / (duration)**2
-                ay = -(2 * dis[1]) / (duration)**2
-                az = -(2 * dis[2]) / (duration)**2
+                ax = -dis[0] / (2*(duration/3)**2)
+                ay = -dis[1] / (2*(duration/3)**2)
+                az = -dis[2] / (2*(duration/3)**2)
                 
                 vx = ax * (t - duration)
                 vy = ay * (t - duration)
@@ -146,17 +145,12 @@ class TrajectoryGenerator:
                 z = z + vz * dt
             
             # Store values in dictionaries with x, y, z keys
-            s_set[t] = {'x': x, 'y': y, 'z': z}
-            v_set[t] = {'vx': vx, 'vy': vy, 'vz': vz}
-            a_set[t] = {'ax': ax, 'ay': ay, 'az': az}
+            s_set[t] = [ x,  y, z]
+            v_set[t] = [ vx,  vy, vz]
+            a_set[t] = [ ax,  ay, az]
 
         # # Print the results
-        # print("s_set:", s_set)
-        # print("v_set:", v_set)
-        # print("a_set:", a_set)
         return t, s_set, v_set, a_set
-
-
     
 
 class MotionController:
@@ -176,7 +170,7 @@ class DeltaRobotSimulator:
     def __init__(self, kinematics, trajectory_gen):#, motion_controller):
         self.kinematics = kinematics
         self.trajectory_gen = trajectory_gen
-        #self.motion_controller = motion_controller
+        self.motion_controller = motion_controller
 
     def simulate_cascade_control(self, start_position, target_position, duration=0.25):
         dt = self.trajectory_gen.dt
