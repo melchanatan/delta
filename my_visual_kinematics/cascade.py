@@ -3,178 +3,82 @@ import numpy as np
 # from my_visual_kinematics.Frame import Frame
 # from my_visual_kinematics.RobotTrajectory import RobotTrajectory
 from math import pi, atan2, sqrt
+import numpy as np
+
 class DeltaRobotController:
-        # params [4, ] [r1, r2, l1, l2]
-    def __init__(self, params, plot_xlim=[-0.5, 0.5], plot_ylim=[-0.5, 0.5], plot_zlim=[-1.0, 0.0],
-                 ws_lim=None, ws_division=5, object_pos=[0, 0, 0], object_speed=0.2):
-    # Robot.__init__(self, params, np.zeros([3, ]), plot_xlim, plot_ylim, plot_zlim, ws_lim, ws_division)
-        self.is_reachable_forward = True
-        self.moving_object_pos = [object_pos[0]], [object_pos[1]], [object_pos[2]]
-        self.object_speed = object_speed
-
-    # ================== Definition of r1, r2, l1, l2
-    #                  r1
-    #              C ========== -------
-    #            l1 //   O    \\ / theta
-    #              //          \\
-    #            B \\---D      //
-    #            l2 \\        //
-    #                \\  P   //
-    #                A ======
-    #                  r2
-    # ==================
-    def move_object(self, x):
-        self.moving_object_pos = [[x], self.moving_object_pos[1], self.moving_object_pos[2]]  # Update robot's position
+    def __init__(self, f, e, rf, re):
+        """
+        Parameters:
+        - f: Base equilateral triangle side length
+        - e: End effector equilateral triangle side length
+        - rf: Length of the upper arms
+        - re: Length of the lower arms
+        """
+        self.params = [f, e, rf, re]
 
     @property
-    def ob_x(self):
-        return self.moving_object_pos[0]
-    
-    @property
-    def r1(self):
+    def f(self):
         return self.params[0]
 
     @property
-    def r2(self):
+    def e(self):
         return self.params[1]
 
     @property
-    def l1(self):
+    def rf(self):
         return self.params[2]
 
     @property
-    def l2(self):
+    def re(self):
         return self.params[3]
 
-    # ================== Definition of phi [3, ]
-    #                  \
-    #                   \  phi[1] = 2/3*pi
-    #                    \
-    #                      -----------  phi[0] = 0
-    #                    /
-    #   phi[2] = 4/3*pi /
-    #                  /
-    # ==================
-    @property
-    def phi(self):
-        return np.array([0., 2.*pi/3., 4.*pi/3.])
+    # Function for Inverse Kinematics
+    def inverse_kinematics(self, x, y, z):
+        
+        def calculate_angle(x0, y0, z0):
+            tan30 = 1 / np.sqrt(3)
+            y1 = -0.5 * self.f * tan30
+            y0 -= 0.5 * self.e * tan30
 
-    # ================== Definition of oc [3, 3]
-    # |  oc1_x  |  oc2_x  |  oc3_x  |
-    # |  oc1_y  |  oc2_y  |  oc3_y  |
-    # |  oc1_z  |  oc2_z  |  oc3_z  |
-    # ==================
-    @property
-    def oc(self):
-        oc = np.zeros([3, 3], dtype=np.float64)
-        oc[0] = np.cos(self.phi) * self.r1
-        oc[1] = np.sin(self.phi) * self.r1
-        return oc
+            # Intermediate calculations for inverse kinematics
+            a = (x0**2 + y0**2 + z0**2 + self.rf**2 - self.re**2 - y1**2) / (2 * z0)
+            b = (y1 - y0) / z0
 
-    # ================== Definition of cb [3, 3]
-    # |  cb1_x  |  cb2_x  |  cb3_x  |
-    # |  cb1_y  |  cb2_y  |  cb3_y  |
-    # |  cb1_z  |  cb2_z  |  cb3_z  |
-    # ==================
-    @property
-    def cb(self):
-        cb = np.zeros([3, 3], dtype=np.float64)
-        cb[0] = np.cos(self.phi) * np.cos(self.axis_values) * self.l1
-        cb[1] = np.sin(self.phi) * np.cos(self.axis_values) * self.l1
-        cb[2] = - np.sin(self.axis_values) * self.l1
-        return cb
+            # Discriminant for quadratic equation
+            d = -(a + b * y1)**2 + self.rf * (b**2 * self.rf + self.rf)
+            if d < 0:
+                raise ValueError(f"Target position ({x0}, {y0}, {z0}) is not reachable.")
 
-    # ================== Definition of ap [3, 3]
-    # |  ap1_x  |  ap2_x  |  ap3_x  |
-    # |  ap1_y  |  ap2_y  |  ap3_y  |
-    # |  ap1_z  |  ap2_z  |  ap3_z  |
-    # ==================
-    @property
-    def ap(self):
-        ap = np.zeros([3, 3], dtype=np.float64)
-        ap[0] = - np.cos(self.phi) * self.r2
-        ap[1] = - np.sin(self.phi) * self.r2
-        return ap
+            yj = (y1 - a * b - np.sqrt(d)) / (b**2 + 1)
+            zj = a + b * yj
 
-    # ================== bd = ap [3 ,3]
-    @property
-    def bd(self):
-        return self.ap
+            theta = np.arctan(-zj / (y1 - yj))
+            return np.degrees(theta)
 
-    # ================== od [3 ,3]
-    @property
-    def od(self):
-        return self.oc + self.cb + self.bd
+        # Compute theta1 for the first arm
+        theta1 = calculate_angle(x, y, z)
 
-    # ================== op (is_reachable, [3, 1])
-    @property
-    def op(self):
-        # solve for circle centroid
-        od = self.od
-        temp_p = np.ones([4, 4], dtype=np.float64)
-        temp_p[1:4, 0:3] = od.T
-        temp_a = np.zeros([3, 3])
-        temp_y = np.zeros([3, 1])
+        # Compute theta2 for the second arm (rotated by 120°)
+        cos120 = np.cos(2 * np.pi / 3)
+        sin120 = np.sin(2 * np.pi / 3)
+        x_prime = x * cos120 + y * sin120
+        y_prime = y * cos120 - x * sin120
+        theta2 = calculate_angle(x_prime, y_prime, z)
 
-        temp_a[0, 0] = np.linalg.det(np.delete(np.delete(temp_p, 0, axis=0), 0, axis=1))
-        temp_a[0, 1] = - np.linalg.det(np.delete(np.delete(temp_p, 0, axis=0), 1, axis=1))
-        temp_a[0, 2] = np.linalg.det(np.delete(np.delete(temp_p, 0, axis=0), 2, axis=1))
-        temp_y[0, 0] = - np.linalg.det(od)
+        # Compute theta3 for the third arm (rotated by 240°)
+        cos240 = np.cos(4 * np.pi / 3)
+        sin240 = np.sin(4 * np.pi / 3)
+        x_double_prime = x * cos240 + y * sin240
+        y_double_prime = y * cos240 - x * sin240
+        theta3 = calculate_angle(x_double_prime, y_double_prime, z)
 
-        temp_a[1, 0] = 2 * (od[0, 1] - od[0, 0])
-        temp_a[1, 1] = 2 * (od[1, 1] - od[1, 0])
-        temp_a[1, 2] = 2 * (od[2, 1] - od[2, 0])
-        temp_y[1, 0] = np.linalg.norm(od[:, 0]) ** 2 - np.linalg.norm(od[:, 1]) ** 2
+        return theta1, theta2, theta3
 
-        temp_a[2, 0] = 2 * (od[0, 2] - od[0, 0])
-        temp_a[2, 1] = 2 * (od[1, 2] - od[1, 0])
-        temp_a[2, 2] = 2 * (od[2, 2] - od[2, 0])
-        temp_y[2, 0] = np.linalg.norm(od[:, 0]) ** 2 - np.linalg.norm(od[:, 2]) ** 2
-
-        oe = - np.linalg.inv(temp_a).dot(temp_y)
-        r = np.linalg.norm(oe - od[:, 0:1])
-        if r > self.l2:
-            logging.error("Pose cannot be reached narak!")
-            self.is_reachable_inverse = False
-            return oe  # False : not reachable
-        else:
-            vec = np.cross(od[:, 2]-od[:, 1], od[:, 2]-od[:, 0])
-            vec = vec / np.linalg.norm(vec) * np.sqrt(self.l2*self.l2 - r*r)
-            op = oe + vec.reshape([3, 1])
-            self.is_reachable_inverse = True
-            return op  # True : reachable
-
-    @property
-    def end_frame(self):
-        return Frame.from_r_3_3(np.eye(3, dtype=np.float64), self.op)
-
-    def inverse(self, end):
-        op = end.t_3_1.flatten()
-        # solve a*sinx + b*cosx = c
-        a = 2 * self.l1 * op[2]
-        theta = np.zeros([3, ], dtype=np.float64)
-        self.is_reachable_inverse = True
-        for i in range(3):
-            oa = op - self.ap[:, i]
-            b = 2 * self.l1 * (np.cos(self.phi[i]) * (self.r1 * np.cos(self.phi[i]) - oa[0])
-                               + np.sin(self.phi[i]) * (self.r1 * np.sin(self.phi[i]) - oa[1]))
-            c = self.l2 * self.l2 - self.l1 * self.l1 - np.linalg.norm(oa) ** 2 \
-                - self.r1 * self.r1 + 2 * self.r1 * (np.cos(self.phi[i]) * oa[0] + np.sin(self.phi[i]) * oa[1])
-            if a*a + b*b > c*c:
-                theta[i] = simplify_angle(atan2(c, -sqrt(a*a+b*b-c*c)) - atan2(b, a))
-            else:
-                self.is_reachable_inverse = False
-                break
-        if not self.is_reachable_inverse:
-            logging.error("Pose cannot be reached mark!")
-            return None
-        self.forward(theta)
-        return theta
     
     def inverse_kinematics_with_velocity(self, x,y,z,vx,vy,vz):
-        theta1, theta2, theta3 = self.inverse(x,y,z)
+        theta1, theta2, theta3 = self.inverse_kinematics(x,y,z)
         J = self.jacobian(theta1, theta2, theta3)
-        cartesian_velocity = np.array(vx,vy,vz)
+        cartesian_velocity = np.array([vx,vy,vz])
         joint_velocity = np.linalg.pinv(J).dot(cartesian_velocity)
         return (theta1, theta2, theta3), joint_velocity
 
@@ -188,48 +92,70 @@ class DeltaRobotController:
     
 
 class TrajectoryGenerator:
-    def __init__(self, v_max, a_max, dt=0.01):
+    def __init__(self, v_max, a_max, dt=0.001):
         self.v_max = v_max  # Maximum velocity
         self.a_max = a_max  # Maximum acceleration
         self.dt = dt        # Time step
 
-    def generate_trapezoidal(self, start, end, duration=0.25):
-        t = np.arange(0, duration + self.dt, self.dt)  # Time steps
-        distance = np.linalg.norm(end - start)         # Total distance
-        part_duration = duration / 3                    # Duration for each phase (accel, constant, decel)
-        
-        t_acc = part_duration                            # Time for acceleration phase
-        t_stable = part_duration                        # Time for constant velocity phase
-        t_dec = part_duration                            # Time for deceleration phase
-        
-        v_peak = distance / (t_acc + t_stable + t_dec)   # Peak velocity required to complete trajectory
+    def generate_trapezoidal(self, start_pos, end_pos, duration=0.25, dt=0.01):
+        dis = end_pos-start_pos  # Distances for x, y, z axes
 
-        # Initialize lists for position and velocity
-        trajectory = []
-        velocities = []
-        
-        # Generate trajectory and velocities for each time step
-        for time in t:
-            if time <= t_acc:  # Acceleration phase
-                v = v_peak * (time / t_acc)                               # Linear increase in velocity
-                pos = start + 0.5 * v_peak * (time ** 2) / t_acc          # Position increases quadratically
-            elif time <= t_acc + t_stable:  # Constant velocity phase
-                elapsed_stable = time - t_acc
-                pos = start + 0.5 * distance + v_peak * elapsed_stable     # Position increases linearly
-                v = v_peak
-            else:  # Deceleration phase
-                elapsed_decel = time - t_acc - t_stable
-                v = v_peak * (1 - elapsed_decel / t_dec)                   # Velocity decreases linearly
-                pos = end - 0.5 * v_peak * (elapsed_decel ** 2) / t_dec    # Position decelerates quadratically
+        # Initialize variables for each axis
+        [x, y, z] = start_pos
+        vx, vy, vz = 0, 0, 0
+        ax, ay, az = 0, 0, 0
+
+        # Initialize dictionaries to store values for all axes
+        s_set, v_set, a_set = {}, {}, {}
+
+        for t in np.arange(0, duration + dt, dt):
+            # Acceleration phase
+            if t <= duration / 3:
+                ax = (2 * dis[0]) / (duration)**2
+                ay = (2 * dis[1]) / (duration)**2
+                az = (2 * dis[2]) / (duration)**2
+                
+                vx = ax * t
+                vy = ay * t
+                vz = az * t
+                
+                x = x + vx * dt
+                y = y + vy * dt
+                z = z + vz * dt
             
-            trajectory.append(pos)
-            velocities.append(v)
-        
-        # Convert lists to numpy arrays
-        trajectory = np.array(trajectory)
-        velocities = np.array(velocities)
-        
-        return t, trajectory, velocities
+            # Constant velocity phase
+            elif t <= duration * 2 / 3:
+                ax, ay, az = 0, 0, 0  
+                
+                x = x + vx * dt
+                y = y + vy * dt
+                z = z + vz * dt
+            
+            # Deceleration phase
+            else:
+                ax = -(2 * dis[0]) / (duration)**2
+                ay = -(2 * dis[1]) / (duration)**2
+                az = -(2 * dis[2]) / (duration)**2
+                
+                vx = ax * (t - duration)
+                vy = ay * (t - duration)
+                vz = az * (t - duration)
+                
+                x = x + vx * dt
+                y = y + vy * dt
+                z = z + vz * dt
+            
+            # Store values in dictionaries with x, y, z keys
+            s_set[t] = {'x': x, 'y': y, 'z': z}
+            v_set[t] = {'vx': vx, 'vy': vy, 'vz': vz}
+            a_set[t] = {'ax': ax, 'ay': ay, 'az': az}
+
+        # # Print the results
+        # print("s_set:", s_set)
+        # print("v_set:", v_set)
+        # print("a_set:", a_set)
+        return t, s_set, v_set, a_set
+
 
     
 
@@ -257,7 +183,7 @@ class DeltaRobotSimulator:
         n_steps = int(duration / dt) + 1
         t = np.linspace(0, duration, n_steps)
         
-        _, trajectory = self.trajectory_gen.generate_trapezoidal(start_position, target_position, duration)
+        _, trajectory,_,_ = self.trajectory_gen.generate_trapezoidal(start_position, target_position, duration)
         
         v_cartesian = np.zeros((n_steps, 3))
         v_cartesian[1:] = (trajectory[1:] - trajectory[:-1]) / dt
