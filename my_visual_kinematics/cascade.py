@@ -73,7 +73,6 @@ class DeltaRobotController:
         theta3 = calculate_angle(x_double_prime, y_double_prime, z)
 
         return theta1, theta2, theta3
-
     
     def inverse_kinematics_with_velocity(self, x,y,z,vx,vy,vz):
         theta1, theta2, theta3 = self.inverse_kinematics(x,y,z)
@@ -94,13 +93,14 @@ class DeltaRobotController:
         
         # Distance in the XY-plane from the origin to the end-effector center
         xy_distance = self.rf + (self.f * tan30) - (self.e * tan30)
-        
+        print("xy_distance = ",xy_distance)
         # Solve for Z using Pythagorean theorem
         z = -np.sqrt(self.re**2 - xy_distance**2)
         
         # At the initial state, the end effector is aligned along the Z-axis
         x = 0.0
         y = 0.0
+        print("homeconfig position = ",[x,y,z])
         return [x, y, z]
     
     def calculate_lowest_z(self):
@@ -113,33 +113,39 @@ class DeltaRobotController:
         # Vertical projection for z using the total length and offset
         lowest_z = -np.sqrt(total_length**2 - offset**2)
         
+        print("lowest_z = ",lowest_z)
         # Return the position tuple
         return lowest_z
     
     def calculate_middle_taskspace(self):
-        z_min = DeltaRobotController.calculate_homeconfig_pos()
-        z_max = DeltaRobotController.calculate_lowest_z()
-        middle_taskspace = (z_min-z_max)/2
+        z_min = self.calculate_homeconfig_pos()[2]
+        z_max = self.calculate_lowest_z()
+        middle_taskspace = (z_min+z_max)/2
+        print("middle_taskspace = ",middle_taskspace)
         return middle_taskspace #z-axis
 
 class TrajectoryGenerator:
-    def __init__(self, v_max, a_max,obj_pos_y, dt=0.01):
+    def __init__(self, v_max, a_max,delta_robot,v_conveyor,obj_pos_y, duration=0.25,dt=0.01):
         self.v_max = v_max  # Maximum velocity
         self.a_max = a_max  # Maximum acceleration
-        self.obj_y = obj_pos_y # start position in y axis of object
+        self.obj_pos_y = obj_pos_y # start position in y axis of object
+        self.delta_robot = delta_robot
+        self.v_conveyor = v_conveyor
+        self.duration = duration
         self.dt = dt        # Time step
     
-    def end_position(self,v_conveyor,obj_start_pos_y,duration=0.25): #obj_start_pos = y axis
-        obj_start_pos = []
-        obj_start_pos[0] = v_conveyor*duration #x axis
-        obj_start_pos[1] = obj_start_pos_y
-        obj_start_pos[2] = DeltaRobotController.calculate_middle_taskspace() #z axis
-        catch_pos = obj_start_pos
-        return catch_pos
-    def generate_trapezoidal(self, duration=0.25, dt=0.01):
-        start_pos = DeltaRobotController.calculate_homeconfig_pos()
-        end_pos = TrajectoryGenerator.end_position()
-        dis = end_pos-start_pos
+    def end_position(self): #obj_start_pos = y axis
+        obj_start_pos = [0,0,0]
+        obj_start_pos[0] = self.v_conveyor * self.duration #x axis
+        obj_start_pos[1] = self.obj_pos_y
+        obj_start_pos[2] = self.delta_robot.calculate_middle_taskspace() #z axis
+        print("obj_start_pos = ",obj_start_pos)
+        return obj_start_pos
+    
+    def generate_trapezoidal(self):
+        start_pos = np.array(self.delta_robot.calculate_homeconfig_pos())  # Convert to NumPy array
+        end_pos = np.array(self.end_position(), dtype=float)  # Convert to NumPy array
+        dis = end_pos - start_pos
         
         # Initialize variables for each axis
         [x, y, z] = start_pos
@@ -150,41 +156,41 @@ class TrajectoryGenerator:
         # Initialize dictionaries to store values for all axes
         s_set, v_set, a_set = {}, {}, {}
 
-        for t in np.arange(0, duration + dt, dt):
+        for t in np.arange(0, self.duration + self.dt, self.dt):
             # Acceleration phase
-            if t <= duration / 3:
-                ax = dis[0] / (2*(duration/3)**2)
-                ay = dis[1] / (2*(duration/3)**2)
-                az = dis[2] / (2*(duration/3)**2)
+            if t <= self.duration / 3:
+                ax = dis[0] / (2*(self.duration/3)**2)
+                ay = dis[1] / (2*(self.duration/3)**2)
+                az = dis[2] / (2*(self.duration/3)**2)
                 
                 vx = ax * t
                 vy = ay * t
                 vz = az * t
                 
-                x = x + vx * dt
-                y = y + vy * dt
-                z = z + vz * dt
+                x = x + vx * self.dt
+                y = y + vy * self.dt
+                z = z + vz * self.dt
             
             # Constant velocity phase
-            elif t <= duration * 2 / 3:
+            elif t <= self.duration * 2 / 3:
                 ax, ay, az = 0, 0, 0  
-                x = x + vx * dt
-                y = y + vy * dt
-                z = z + vz * dt
+                x = x + vx * self.dt
+                y = y + vy * self.dt
+                z = z + vz * self.dt
             
             # Deceleration phase
             else:
-                ax = -dis[0] / (2*(duration/3)**2)
-                ay = -dis[1] / (2*(duration/3)**2)
-                az = -dis[2] / (2*(duration/3)**2)
+                ax = -dis[0] / (2*(self.duration/3)**2)
+                ay = -dis[1] / (2*(self.duration/3)**2)
+                az = -dis[2] / (2*(self.duration/3)**2)
                 
-                vx = ax * (t - duration)
-                vy = ay * (t - duration)
-                vz = az * (t - duration)
+                vx = ax * (t - self.duration)
+                vy = ay * (t - self.duration)
+                vz = az * (t - self.duration)
                 
-                x = x + vx * dt
-                y = y + vy * dt
-                z = z + vz * dt
+                x = x + vx * self.dt
+                y = y + vy * self.dt
+                z = z + vz * self.dt
             
             # Store values in dictionaries with x, y, z keys
             s_set[t] = [ x,  y, z]
@@ -209,7 +215,7 @@ class MotionController:
         return self.Kp_vel * error
 
 class DeltaRobotSimulator:
-    def __init__(self, kinematics, trajectory_gen):#, motion_controller):
+    def __init__(self, kinematics, trajectory_gen,motion_controller):#, motion_controller):
         self.kinematics = kinematics
         self.trajectory_gen = trajectory_gen
         self.motion_controller = motion_controller
