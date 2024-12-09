@@ -3,7 +3,6 @@ import numpy as np
 # from my_visual_kinematics.Frame import Frame
 # from my_visual_kinematics.RobotTrajectory import RobotTrajectory
 from math import pi, atan2, sqrt
-import numpy as np
 
 class DeltaRobotController:
     def __init__(self, f, e, rf, re):
@@ -71,15 +70,36 @@ class DeltaRobotController:
         x_double_prime = x * cos240 + y * sin240
         y_double_prime = y * cos240 - x * sin240
         theta3 = calculate_angle(x_double_prime, y_double_prime, z)
+        return theta1,theta2,theta3
 
-        return theta1, theta2, theta3
-    
-    def inverse_kinematics_with_velocity(self, x,y,z,vx,vy,vz):
-        theta1, theta2, theta3 = self.inverse_kinematics(x,y,z)
+    def convert_to_python(self,data):
+        """
+        Recursively convert numpy data types and arrays to Python native types.
+        """
+        if isinstance(data, np.ndarray):  # If it's a numpy array, convert to a list
+            return data.tolist()
+        elif isinstance(data, np.generic):  # If it's a numpy scalar, convert to a Python scalar
+            return data.item()
+        elif isinstance(data, list):  # If it's a list, recursively process its elements
+            return [self.convert_to_python(item) for item in data]
+        elif isinstance(data, tuple):  # If it's a tuple, recursively process and return as a tuple
+            return tuple(self.convert_to_python(item) for item in data)
+        else:  # If it's any other type, return as is
+            return data
+
+    def inverse_kinematics_with_velocity(self, theta1, theta2, theta3, vx, vy, vz):
         J = self.jacobian(theta1, theta2, theta3)
-        cartesian_velocity = np.array([vx,vy,vz])
+        cartesian_velocity = np.array([vx, vy, vz])
         joint_velocity = np.linalg.pinv(J).dot(cartesian_velocity)
-        return (theta1, theta2, theta3), joint_velocity
+
+        # Convert results to Python native types
+        theta1 = self.convert_to_python(theta1)
+        theta2 = self.convert_to_python(theta2)
+        theta3 = self.convert_to_python(theta3)
+        joint_velocity = self.convert_to_python(joint_velocity)
+
+        return theta1, theta2, theta3, joint_velocity
+
 
     def jacobian(self, theta1, theta2, theta3):
         return np.array([
