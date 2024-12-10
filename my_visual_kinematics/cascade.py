@@ -166,12 +166,12 @@ class TrajectoryGenerator:
         self.dt = dt        # Time step
     
     def end_position(self): #obj_start_pos = y axis
-        obj_start_pos = [0,0,0]
-        obj_start_pos[0] = self.v_conveyor * self.duration #x axis
-        obj_start_pos[1] = self.obj_pos_y
-        obj_start_pos[2] = self.delta_robot.calculate_middle_taskspace() #z axis
-        print("obj_start_pos = ",obj_start_pos)
-        return obj_start_pos
+        obj_end_pos = [0,0,0]
+        obj_end_pos[0] = self.v_conveyor * self.duration #x axis
+        obj_end_pos[1] = self.obj_pos_y
+        obj_end_pos[2] = self.delta_robot.calculate_middle_taskspace() #z axis
+        print("obj_end_pos = ",obj_end_pos)
+        return obj_end_pos
     
     def generate_trapezoidal(self):
         start_pos = np.array(self.delta_robot.calculate_homeconfig_pos())  # Convert to NumPy array
@@ -231,62 +231,3 @@ class TrajectoryGenerator:
         # # Print the results
         return t, s_set, v_set, a_set
     
-
-class MotionController:
-    def __init__(self, Kp_pos, Kp_vel):
-        self.Kp_pos = Kp_pos
-        self.Kp_vel = Kp_vel
-
-    def position_control(self, current_pos, target_pos):
-        error = target_pos - current_pos
-        return self.Kp_pos * error
-
-    def velocity_control(self, v_desired, v_current):
-        error = v_desired - v_current
-        return self.Kp_vel * error
-
-class DeltaRobotSimulator:
-    def __init__(self, kinematics, trajectory_gen,motion_controller):#, motion_controller):
-        self.kinematics = kinematics
-        self.trajectory_gen = trajectory_gen
-        self.motion_controller = motion_controller
-
-    def simulate_cascade_control(self, start_position, target_position, duration=0.25):
-        dt = self.trajectory_gen.dt
-        n_steps = int(duration / dt) + 1
-        t = np.linspace(0, duration, n_steps)
-        
-        _, trajectory,_,_ = self.trajectory_gen.generate_trapezoidal(start_position, target_position, duration)
-        
-        v_cartesian = np.zeros((n_steps, 3))
-        v_cartesian[1:] = (trajectory[1:] - trajectory[:-1]) / dt
-        
-        max_v = 0
-        joint_angles = np.zeros((n_steps, 3))
-        joint_velocities = np.zeros((n_steps, 3))
-        torques = np.zeros((n_steps, 3))
-        
-        current_position = start_position.copy()
-        current_velocity = np.zeros(3)
-        
-        for i in range(n_steps):
-            try:
-                angles, velocity = self.kinematics.inverse_kinematics_with_velocity(
-                    trajectory[i][0], trajectory[i][1], trajectory[i][2],
-                    v_cartesian[i][0], v_cartesian[i][1], v_cartesian[i][2]
-                )
-                joint_angles[i] = angles
-                joint_velocities[i] = velocity
-                
-                current_v = np.linalg.norm(v_cartesian[i])
-                max_v = max(max_v, current_v)
-                
-                # Instead of position and velocity control, directly update the position and velocity
-                if i > 0:
-                    current_velocity += torques[i] * dt  # You may update this as needed based on your system dynamics
-                    current_position += current_velocity * dt
-                    
-            except ValueError as e:
-                print(f"Step {i}: {e}")
-                
-        return joint_angles, joint_velocities, torques, t, max_v
