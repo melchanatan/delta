@@ -15,10 +15,11 @@ tan30 = 1 / np.sqrt(3)
 v_max,a_max = 30,30
 v_conveyor = 0.3
 obj_pos_y = 0.2
+mass = 0.5
 duration = 0.25
 dt = 0.001
 
-delta_kinematics = DeltaRobotController(f, e, rf, re)
+delta_kinematics = DeltaRobotController(f, e, rf, re,mass)
 trajectory_generator = TrajectoryGenerator(v_max, a_max,delta_kinematics,v_conveyor,obj_pos_y, duration,dt)
 time,poss,vels,accs = trajectory_generator.generate_trapezoidal()
 
@@ -26,7 +27,8 @@ for t in np.arange(0,duration + dt, dt):
     theta_jointvel_set = []
     theta1,theta2,theta3 = delta_kinematics.inverse_kinematics(poss[t][0],poss[t][1],poss[t][2])
     theta1,theta2,theta3, joint_v = delta_kinematics.inverse_kinematics_with_velocity(theta1,theta2,theta3,vels[t][0],vels[t][1],vels[t][2])
-    theta_jointvel_set.append([[theta1,theta2,theta3],joint_v])
+    torque = delta_kinematics.calculate_motor_torques_yz(theta1,theta2,theta3)
+    theta_jointvel_set.append([[theta1,theta2,theta3],joint_v,torque]) #,joint_v,torque
     print(theta_jointvel_set) 
 
 # # Extract time, positions, velocities, and accelerations from the output

@@ -2,10 +2,10 @@ import numpy as np
 # from my_visual_kinematics.RobotDelta import RobotDelta
 # from my_visual_kinematics.Frame import Frame
 # from my_visual_kinematics.RobotTrajectory import RobotTrajectory
-from math import pi, atan2, sqrt
+from math import pi, atan2, sqrt, sin, cos, radians
 
 class DeltaRobotController:
-    def __init__(self, f, e, rf, re):
+    def __init__(self, f, e, rf, re,mass):
         """
         Parameters:
         - f: Base equilateral triangle side length
@@ -14,6 +14,7 @@ class DeltaRobotController:
         - re: Length of the lower arms
         """
         self.params = [f, e, rf, re]
+        self.mass = mass
 
     @property
     def f(self):
@@ -99,13 +100,23 @@ class DeltaRobotController:
         joint_velocity = self.convert_to_python(joint_velocity)
 
         return theta1, theta2, theta3, joint_velocity
+    def calculate_motor_torques_yz(self,theta1,theta2,theta3): #F = [Fx,Fy,Fz] theta = [theta1,theta2,theta3]
+        # Convert angles from degrees to radians
+        theta_rad = [radians(angle) for angle in [theta1,theta2,theta3]]
+        theta1, theta2, theta3 = theta_rad
 
-
+        # Compute Jacobian for the YZ plane
+        J = self.jacobian(theta1, theta2, theta3)
+        F = [0,0,self.mass]
+        # Compute torques using the Jacobian transpose
+        tau = np.dot(J.T, F)  # Torque vector
+        return tau.tolist()
+    
     def jacobian(self, theta1, theta2, theta3):
         return np.array([
+            [0,0,0],
             [-self.rf * np.sin(np.radians(theta1)), -self.rf * np.sin(np.radians(theta2)), -self.rf * np.sin(np.radians(theta3))],
-            [self.rf * np.cos(np.radians(theta1)), self.rf * np.cos(np.radians(theta2)), self.rf * np.cos(np.radians(theta3))],
-            [0, 0, 0]
+            [self.rf * np.cos(np.radians(theta1)), self.rf * np.cos(np.radians(theta2)), self.rf * np.cos(np.radians(theta3))] 
         ])
         
     def calculate_homeconfig_pos(self): #homeconfig_pos of end_effector
