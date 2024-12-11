@@ -120,6 +120,9 @@ class DeltaRobotController:
         ])
         
     def calculate_homeconfig_pos(self): #homeconfig_pos of end_effector
+        if(self.re < self.rf+(self.f/(2 * np.sqrt(3)))-(self.e/(2 * np.sqrt(3)))):
+            raise Exception("Lower arm is too SHORT")
+        
         tan30 = 1 / np.sqrt(3)  # tan(30Â°)
         
         # Distance in the XY-plane from the origin to the end-effector center
@@ -135,6 +138,8 @@ class DeltaRobotController:
         return [x, y, z]
     
     def calculate_lowest_z(self):
+        if((self.f/(2 * np.sqrt(3))) > self.re + self.rf + (self.e/(2 * np.sqrt(3)))):
+            raise Exception("ERROR: Base is too LONG.")
         # Offset from the triangular base and end effector
         offset = 0.5 * (self.f / np.sqrt(3) - self.e / np.sqrt(3))
         
