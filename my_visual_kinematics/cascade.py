@@ -164,12 +164,11 @@ class DeltaRobotController:
         return middle_taskspace #z-axis
 
 class TrajectoryGenerator:
-    def __init__(self, v_max, a_max,delta_robot,v_conveyor,obj_pos_y, duration=0.25,dt=0.01):
-        self.v_max = v_max  # Maximum velocity
-        self.a_max = a_max  # Maximum acceleration
+    def __init__(self,delta_robot,v_conveyor,conveyor_lenght,obj_pos_y, duration=0.25,dt=0.01):
         self.obj_pos_y = obj_pos_y # start position in y axis of object
         self.delta_robot = delta_robot
         self.v_conveyor = v_conveyor
+        self.conveyor_lenght = conveyor_lenght
         self.duration = duration
         self.dt = dt        # Time step
     

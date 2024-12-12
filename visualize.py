@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 f = 0.5    # Base equilateral triangle side length
 e = 0.05   # End effector equilateral triangle side length
 rf = 0.6   # Upper arm length
-re = 1   # Lower arm length
-v_max,a_max = 30,30
+re = 10   # Lower arm length
 v_conveyor = 0.3
+conveyor_lenght = 3.5
 obj_pos_y = 0.2
 mass = 0.5
 duration = 0.25
@@ -21,9 +21,10 @@ dt = 0.01
 tan30 = 1 / np.sqrt(3)
 
 delta_kinematics = DeltaRobotController(f, e, rf, re,mass)
-trajectory_generator = TrajectoryGenerator(v_max, a_max,delta_kinematics,v_conveyor,obj_pos_y, duration,dt)
+trajectory_generator = TrajectoryGenerator(delta_kinematics,v_conveyor,conveyor_lenght,obj_pos_y, duration,dt)
 offset_conveyor_upperbase = delta_kinematics.calculate_middle_taskspace()
 time,poss,vels,accs = trajectory_generator.generate_trapezoidal()
+wait_for_object = v_conveyor*conveyor_lenght*0.5
 print(offset_conveyor_upperbase)
 for t in np.arange(0,duration + dt, dt):
     joint_set = []
