@@ -120,6 +120,9 @@ class DeltaRobotController:
         ])
         
     def calculate_homeconfig_pos(self): #homeconfig_pos of end_effector
+        
+        if self.re > 10 or self.rf > 10 or self.e > 10 or self.f > 10 :
+            raise Exception("Upper plate, lower plate, Upper arm and Lower arm must be less than 10")
         if(self.re < self.rf+(self.f/(2 * np.sqrt(3)))-(self.e/(2 * np.sqrt(3)))):
             raise Exception("Lower arm is too SHORT")
         
@@ -127,14 +130,14 @@ class DeltaRobotController:
         
         # Distance in the XY-plane from the origin to the end-effector center
         xy_distance = self.rf + (self.f * tan30) - (self.e * tan30)
-        print("xy_distance = ",xy_distance)
+        # print("xy_distance = ",xy_distance)
         # Solve for Z using Pythagorean theorem
         z = -np.sqrt(self.re**2 - xy_distance**2)
         
         # At the initial state, the end effector is aligned along the Z-axis
         x = 0.0
         y = 0.0
-        print("homeconfig position = ",[x,y,z])
+        # print("homeconfig position = ",[x,y,z])
         return [x, y, z]
     
     def calculate_lowest_z(self):
@@ -149,7 +152,7 @@ class DeltaRobotController:
         # Vertical projection for z using the total length and offset
         lowest_z = -np.sqrt(total_length**2 - offset**2)
         
-        print("lowest_z = ",lowest_z)
+        # print("lowest_z = ",lowest_z)
         # Return the position tuple
         return lowest_z
     
@@ -157,7 +160,7 @@ class DeltaRobotController:
         z_min = self.calculate_homeconfig_pos()[2]
         z_max = self.calculate_lowest_z()
         middle_taskspace = (z_min+z_max)/2
-        print("middle_taskspace = ",middle_taskspace)
+        # print("middle_taskspace = ",middle_taskspace)
         return middle_taskspace #z-axis
 
 class TrajectoryGenerator:
@@ -175,7 +178,7 @@ class TrajectoryGenerator:
         obj_end_pos[0] = self.v_conveyor * self.duration #x axis
         obj_end_pos[1] = self.obj_pos_y
         obj_end_pos[2] = self.delta_robot.calculate_middle_taskspace() #z axis
-        print("obj_end_pos = ",obj_end_pos)
+        # print("obj_end_pos = ",obj_end_pos)
         return obj_end_pos
     
     def generate_trapezoidal(self):
@@ -185,7 +188,7 @@ class TrajectoryGenerator:
         
         # Initialize variables for each axis
         [x, y, z] = start_pos
-        print(x,y,z)
+        # print(x,y,z)
         vx, vy, vz = 0, 0, 0
         ax, ay, az = 0, 0, 0
 

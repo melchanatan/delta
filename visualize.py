@@ -8,47 +8,51 @@ import matplotlib.pyplot as plt
 
 # Robot Parameters
 f = 0.5    # Base equilateral triangle side length
-e = 0.1   # End effector equilateral triangle side length
-rf = 0.5   # Upper arm length
+e = 0.05   # End effector equilateral triangle side length
+rf = 0.6   # Upper arm length
 re = 1   # Lower arm length
 v_max,a_max = 30,30
 v_conveyor = 0.3
 obj_pos_y = 0.2
 mass = 0.5
 duration = 0.25
-dt = 0.001
+dt = 0.01
 
 tan30 = 1 / np.sqrt(3)
 
 delta_kinematics = DeltaRobotController(f, e, rf, re,mass)
 trajectory_generator = TrajectoryGenerator(v_max, a_max,delta_kinematics,v_conveyor,obj_pos_y, duration,dt)
+offset_conveyor_upperbase = delta_kinematics.calculate_middle_taskspace()
 time,poss,vels,accs = trajectory_generator.generate_trapezoidal()
-
+print(offset_conveyor_upperbase)
 for t in np.arange(0,duration + dt, dt):
-    theta_jointvel_set = []
+    joint_set = []
     theta1,theta2,theta3 = delta_kinematics.inverse_kinematics(poss[t][0],poss[t][1],poss[t][2])
     theta1,theta2,theta3, joint_v = delta_kinematics.inverse_kinematics_with_velocity(theta1,theta2,theta3,vels[t][0],vels[t][1],vels[t][2])
     torque = delta_kinematics.calculate_motor_torques_yz(theta1,theta2,theta3)
-    theta_jointvel_set.append([[theta1,theta2,theta3],joint_v,torque,time]) 
-    print(theta_jointvel_set) 
+    joint_set.append([[theta1,theta2,theta3],joint_v,torque,t]) 
+    # print(joint_v) 
+    # print(theta1,theta2,theta3,t)
+    #print
+    
 
-# # Extract time, positions, velocities, and accelerations from the output
-# time = np.array(list(positions.keys()))  # Convert time steps to a numpy array
+# # Print tarjectory graph
+# time = np.array(list(poss.keys()))  # Convert time steps to a numpy array
 
 # # Extract positions
-# x_positions = np.array([positions[t][0] for t in time])
-# y_positions = np.array([positions[t][1] for t in time])
-# z_positions = np.array([positions[t][2] for t in time])
+# x_positions = np.array([poss[t][0] for t in time])
+# y_positions = np.array([poss[t][1] for t in time])
+# z_positions = np.array([poss[t][2] for t in time])
 
 # # Extract velocities
-# x_velocities = np.array([velocities[t][0] for t in time])
-# y_velocities = np.array([velocities[t][1] for t in time])
-# z_velocities = np.array([velocities[t][2] for t in time])
+# x_velocities = np.array([vels[t][0] for t in time])
+# y_velocities = np.array([vels[t][1] for t in time])
+# z_velocities = np.array([vels[t][2] for t in time])
 
 # # Extract accelerations
-# x_accelerations = np.array([accelerations[t][0] for t in time])
-# y_accelerations = np.array([accelerations[t][1] for t in time])
-# z_accelerations = np.array([accelerations[t][2] for t in time])
+# x_accelerations = np.array([accs[t][0] for t in time])
+# y_accelerations = np.array([accs[t][1] for t in time])
+# z_accelerations = np.array([accs[t][2] for t in time])
 
 # # Plot positions over time
 # plt.figure(figsize=(10, 6))
