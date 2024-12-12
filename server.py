@@ -20,7 +20,7 @@ def read_root():
 
 
 @app.post("/trajectory")
-async def read_trajectory(v_conveyor=0.3, obj_pos_y=0.2, duration=0.25):
+async def read_trajectory(v_conveyor=0.3, obj_pos_y=-0.45, duration=0.25):
     print(v_conveyor, obj_pos_y, duration)
     try:
         theta_jointvel_set = generate_trajectory(

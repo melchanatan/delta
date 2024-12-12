@@ -15,7 +15,7 @@ def generate_trajectory(v_conveyor, obj_pos_y, duration):
     re = 1   # Lower arm length
     v_max, a_max = 30, 30
     mass = 0.5
-    dt = 0.001
+    dt = 0.01
 
     tan30 = 1 / np.sqrt(3)
 
@@ -35,9 +35,12 @@ def generate_trajectory(v_conveyor, obj_pos_y, duration):
             theta1, theta2, theta3)
         theta_jointvel_set.append(
             [[theta1, theta2, theta3], joint_v, torque, t])
-    print(theta_jointvel_set)
+        print(joint_v)
     return theta_jointvel_set
 
+
+if __name__ == "__main__":
+    generate_trajectory(0.2, 0.3, 0.25)
 
 # # Extract time, positions, velocities, and accelerations from the output
 # time = np.array(list(positions.keys()))  # Convert time steps to a numpy array
